@@ -1,0 +1,17 @@
+{
+  "code": "PGRST201",
+  "details": [
+    {
+      "cardinality": "many-to-one",
+      "embedding": "reviews with profiles",
+      "relationship": "reviews_author_id_fkey using reviews(author_id) and profiles(id)"
+    },
+    {
+      "cardinality": "many-to-many",
+      "embedding": "reviews with profiles",
+      "relationship": "likes using likes_review_id_fkey(review_id) and likes_user_id_fkey(user_id)"
+    }
+  ],
+  "hint": "Try changing 'profiles' to one of the following: 'profiles!reviews_author_id_fkey', 'profiles!likes'. Find the desired relationship in the 'details' key.",
+  "message": "Could not embed because more than one relationship was found for 'reviews' and 'profiles'"
+}
