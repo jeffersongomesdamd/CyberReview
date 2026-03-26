@@ -2,6 +2,9 @@ import type { Metadata } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import ProfileClient from './ProfileClient'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function generateMetadata(
   { params }: { params: { id: string } }
 ): Promise<Metadata> {
