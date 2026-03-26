@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const orbitron = Orbitron({ subsets: ['latin'], variable: '--font-orbitron' })
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://cyberreview-one.vercel.app'), // URL base aproximada
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://cyberreview-one.vercel.app'),
   title: {
     default: 'CyberReview — Ranqueie Qualquer Coisa',
     template: '%s | CyberReview',

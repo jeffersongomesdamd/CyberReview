@@ -208,6 +208,8 @@ export default function ReviewModal({ onClose, onSuccess, categories, cloneSourc
           toast.error('Categoria inválida. Selecione novamente.')
         } else if (error.code === '23502') {
           toast.error(`Campo obrigatório faltando: ${error.message}`)
+        } else if (error.message?.includes('anti_spam_cooldown')) {
+          toast.error('Calma aí, hacker! Aguarde um pouco antes de publicar ou clonar.', { style: { background: '#111118', color: '#ffd700', border: '1px solid #ffd700' } })
         } else {
           toast.error(`Erro ao publicar: ${error.message}`)
         }

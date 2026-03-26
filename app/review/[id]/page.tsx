@@ -25,11 +25,18 @@ export async function generateMetadata(
     title: data.title,
     description: data.description ?? `Review de ${data.title} por @${author} — ${category}`,
     openGraph: {
+      type: 'article',
       title: `${data.title} | CyberReview`,
       description: data.description ?? `Review por @${author}`,
       images: data.image_url
         ? [{ url: data.image_url, width: 1200, height: 630 }]
         : [{ url: '/og-image.png' }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${data.title} | CyberReview`,
+      description: data.description ?? `Review de ${data.title} por @${author}`,
+      images: data.image_url ? [data.image_url] : ['/og-image.png'],
     },
   }
 }

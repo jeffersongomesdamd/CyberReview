@@ -118,6 +118,8 @@ export default function ReviewClient() {
   const [cloneModalOpen, setCloneModalOpen] = useState(false)
   const [categories, setCategories] = useState<any[]>([])
   const [likeAnimation, setLikeAnimation] = useState(false)
+  const [burstParticles, setBurstParticles] = useState<{id:number;x:number;y:number;vx:number;vy:number;color:string;life:number}[]>([])
+  const burstId = useRef(0)
   
   // Perfil e equipados do autor da review
   const [authorEquipped, setAuthorEquipped] = useState<any>(null)
@@ -228,6 +230,25 @@ export default function ReviewClient() {
     if (newLiked) {
       setLikeAnimation(true)
       setTimeout(() => setLikeAnimation(false), 800)
+
+      const effect = myEquipped?.reaction_effect
+      if (effect) {
+        const colors = effect.color
+          ? [effect.color, '#ffffff', effect.color]
+          : ['#ff2079', '#00f2ff', '#bc13fe', '#ffd700']
+
+        const newParticles = Array.from({ length: effect.effect === 'mega-explosion' ? 20 : effect.effect === 'explosion' ? 12 : 8 }, (_, i) => ({
+          id: burstId.current++,
+          x: 50, y: 50,
+          vx: (Math.random() - 0.5) * 8,
+          vy: -(2 + Math.random() * 5),
+          color: colors[Math.floor(Math.random() * colors.length)],
+          life: 1,
+        }))
+
+        setBurstParticles(newParticles)
+        setTimeout(() => setBurstParticles([]), 800)
+      }
     }
 
     setIsLiked(newLiked)
@@ -271,6 +292,12 @@ export default function ReviewClient() {
       setComments(prev => [...prev, data])
       setCommentText('')
       toast.success('Comentário enviado!', { style: { background: '#111118', color: '#00ff9d', border: '1px solid rgba(0,255,157,0.3)' } })
+    } else if (error) {
+      if (error.message?.includes('anti_spam_cooldown')) {
+        toast.error('Opa! Aguarde 15 segundos antes de comentar novamente.', { style: { background: '#111118', color: '#ffd700', border: '1px solid #ffd700' } })
+      } else {
+        toast.error('Erro ao enviar comentário', { style: { background: '#111118', color: '#ff2079', border: '1px solid #ff2079' } })
+      }
     }
     setSendingComment(false)
   }
@@ -578,6 +605,7 @@ export default function ReviewClient() {
                 fontSize: '0.78rem', cursor: 'pointer', transition: 'all 0.2s',
                 fontFamily: 'Inter, sans-serif',
                 position: 'relative',
+                overflow: 'visible',
               }}>
                 <Heart size={15} fill={isLiked ? '#ff2079' : 'none'} />
                 {review.like_count} curtidas
@@ -596,6 +624,21 @@ export default function ReviewClient() {
                         {myEquipped?.emoji?.emoji ?? '❤️'}
                       </span>
                     )}
+
+                    {/* Partículas de explosão */}
+                    {burstParticles.map(p => (
+                      <div key={p.id} style={{
+                        position: 'absolute',
+                        left: `${p.x}%`, top: `${p.y}%`,
+                        width: 5, height: 5, borderRadius: '50%',
+                        background: p.color,
+                        boxShadow: `0 0 6px ${p.color}`,
+                        pointerEvents: 'none', zIndex: 20,
+                        animation: 'burstParticle 0.8s ease-out forwards',
+                        '--vx': `${p.vx * 8}px`,
+                        '--vy': `${p.vy * 8}px`,
+                      } as React.CSSProperties} />
+                    ))}
               </button>
 
               <button onClick={() => setCloneModalOpen(true)} style={{

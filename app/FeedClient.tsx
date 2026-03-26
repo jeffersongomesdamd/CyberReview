@@ -39,7 +39,7 @@ export default function FeedClient() {
   useEffect(() => {
     supabase
       .from('reviews')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'estimated', head: true })
       .then(({ count }) => { if (count !== null) setTotalReviews(count) })
   }, [])
 
