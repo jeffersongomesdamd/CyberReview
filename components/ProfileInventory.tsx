@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
 import { RARITY_COLORS, LootboxRarityKey } from '@/lib/constants'
 import CyberGodBadge from './CyberGodBadge'
@@ -539,7 +540,7 @@ export default function ProfileInventory({ userId, isOwner, friends, onProfileUp
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.625rem' }}>
                 {friends.map((f: any) => (
-                  <a key={f.id} href={`/profile/${f.id}`} style={{
+                  <Link key={f.id} href={`/profile/${f.username}`} style={{
                     display: 'flex', alignItems: 'center', gap: '0.5rem',
                     padding: '0.375rem 0.75rem',
                     background: 'rgba(255,255,255,0.03)',
@@ -573,7 +574,7 @@ export default function ProfileInventory({ userId, isOwner, friends, onProfileUp
                         size="sm"
                       />
                     </div>
-                  </a>
+                  </Link>
                 ))}
               </div>
             )}

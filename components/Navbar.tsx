@@ -168,7 +168,7 @@ export default function Navbar({ onNewReview }: { onNewReview?: () => void }) {
                       zIndex: 200,
                     }}>
                       <Link
-                        href={`/profile/${user.id}`}
+                        href={`/profile/${profile?.username ?? user.id}`}
                         onClick={() => setDropdownOpen(false)}
                         style={{
                           display: 'flex',

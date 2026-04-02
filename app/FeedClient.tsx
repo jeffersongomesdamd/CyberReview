@@ -43,6 +43,9 @@ export default function FeedClient() {
       .then(({ count }) => { if (count !== null) setTotalReviews(count) })
   }, [])
 
+  // Ref para evitar re-buscas duplicadas se os filtros não mudaram
+  const prevFiltersRef = useRef<string>('')
+
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const scrollCategories = (dir: 'left' | 'right') => {
@@ -51,15 +54,38 @@ export default function FeedClient() {
     }
   }
 
-  // Usar ref para evitar problema de stale closure
+  // Ref para evitar problema de stale closure
   const fetchingRef = useRef(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // Busca categorias uma vez
   useEffect(() => {
-    supabase.from('categories').select('*').order('name').then(({ data, error }) => {
-      if (error) { /**/ }
+    supabase.from('categories').select('*').order('name').then(({ data }) => {
       if (data) setCategories(data)
     })
+  }, [])
+
+  // Listener em tempo real para sincronização de contadores (Likes/Comments)
+  useEffect(() => {
+    const channel = supabase
+      .channel('public:reviews:feed_counters')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'reviews',
+      }, (payload: any) => {
+        const { id, like_count, comment_count, clone_count } = payload.new
+        setReviews(prev => prev.map(r => 
+          r.id === id 
+            ? { ...r, like_count: like_count ?? 0, comment_count: comment_count ?? 0, clone_count: clone_count ?? 0 } 
+            : r
+        ))
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   // Função de busca principal — sem useCallback para evitar stale closures
@@ -73,8 +99,21 @@ export default function FeedClient() {
     pg: number
     userId: string | undefined
   }) => {
-    if (fetchingRef.current) return
+    // Abortar qualquer requisição anterior imediatamente ao mudar de filtro/página
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+
+    if (fetchingRef.current && !opts.reset) return // Bloqueio apenas para "Load More" duplicados
     fetchingRef.current = true
+
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
+
+    // Timeout de segurança para evitar engasgos infinitos do cliente
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current) abortControllerRef.current.abort()
+    }, 15000)
 
     opts.reset ? setLoading(true) : setLoadingMore(true)
 
@@ -93,6 +132,7 @@ export default function FeedClient() {
           cloned_from,
           clone_count,
           like_count,
+          comment_count,
           created_at,
           profiles!reviews_author_id_fkey (id, username, avatar_url, xp, review_count),
           categories (id, name, icon)
@@ -147,7 +187,7 @@ export default function FeedClient() {
       // Paginação
       query = query.range(opts.pg * PAGE_SIZE, (opts.pg + 1) * PAGE_SIZE - 1)
 
-      const { data, error } = await query
+      const { data, error } = await (query as any).abortSignal(signal)
 
       if (error) {
         return
@@ -176,24 +216,48 @@ export default function FeedClient() {
       if (opts.reset) {
         setReviews(enriched)
       } else {
-        setReviews(prev => [...prev, ...enriched])
+        setReviews(prev => {
+          // Evitar duplicatas se a query de "load more" falhar ou se houver overlap
+          const existingIds = new Set(prev.map(r => r.id))
+          const filteredNew = enriched.filter(r => !existingIds.has(r.id))
+          return [...prev, ...filteredNew]
+        })
       }
 
       setPage(opts.pg + 1)
       setHasMore((data?.length ?? 0) === PAGE_SIZE)
+      clearTimeout(timeoutId)
     } catch (err) {
+      console.error('Fetch error:', err)
     } finally {
-      setLoading(false)
-      setLoadingMore(false)
-      fetchingRef.current = false
+      if (!signal.aborted) {
+        setLoading(false)
+        setLoadingMore(false)
+        fetchingRef.current = false
+      }
     }
   }
 
   // Re-busca quando filtros mudam
   useEffect(() => {
-    setReviews([])
+    const currentFilters = JSON.stringify({
+      selectedCategory,
+      sortBy,
+      friendsOnly,
+      myReviewsOnly,
+      searchQuery,
+      userId: user?.id
+    })
+
+    if (prevFiltersRef.current === currentFilters) return
+    prevFiltersRef.current = currentFilters
+
+    // Só limpa o feed se for uma mudança real de filtro (não apenas re-foco)
+    // Mas para uma experiência mais fluida, podemos manter os reviews antigos 
+    // e mostrar um loading sutil.
     setPage(0)
     setHasMore(false)
+
     doFetch({
       reset: true,
       cat: selectedCategory,
@@ -267,7 +331,18 @@ export default function FeedClient() {
         background: 'rgba(0,242,255,0.02)',
         borderBottom: '1px solid rgba(0,242,255,0.07)',
         padding: '0.5rem 1.5rem',
+        position: 'relative',
       }}>
+        {/* Loading line for background refreshes */}
+        {loading && reviews.length > 0 && (
+          <div style={{
+            position: 'absolute', bottom: -1, left: 0,
+            height: 1, width: '100%',
+            background: 'linear-gradient(90deg, transparent, #00f2ff, transparent)',
+            animation: 'shimmer 1.5s infinite',
+            zIndex: 10,
+          }} />
+        )}
         <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'center', gap: '2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ fontFamily: 'Orbitron, sans-serif', fontSize: '0.85rem', fontWeight: 700, color: '#00f2ff', textShadow: '0 0 10px rgba(0,242,255,0.5)' }}>
@@ -491,11 +566,11 @@ export default function FeedClient() {
         </div>
 
         {/* Grid de reviews */}
-        {loading ? (
+        {(loading && reviews.length === 0) ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
             {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
-        ) : reviews.length === 0 ? (
+        ) : (reviews.length === 0 && !loading) ? (
           <div style={{ textAlign: 'center', padding: '5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
             <div style={{
               width: 72, height: 72, borderRadius: '50%',
@@ -504,13 +579,14 @@ export default function FeedClient() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '1.75rem',
             }}>🔍</div>
-            <h2 style={{ fontFamily: 'Orbitron, sans-serif', fontSize: '1.1rem', color: '#e0e0e0' }}>
-              NENHUMA REVIEW ENCONTRADA
+            <h2 style={{ fontFamily: 'Orbitron, sans-serif', fontSize: '1.25rem', color: '#ff2079', textShadow: '0 0 10px rgba(255,32,121,0.3)', letterSpacing: '0.1em' }}>
+              A REDE ESTÁ SILENCIOSA...
             </h2>
-            <p style={{ color: '#444466', fontSize: '0.82rem', maxWidth: 340, lineHeight: 1.7 }}>
+            <p style={{ color: '#444466', fontSize: '0.9rem', maxWidth: 400, lineHeight: 1.7, fontFamily: 'monospace' }}>
+              [SISTEMA]:: Nenhum sinal de review detectado nesta frequência.<br/>
               {user
-                ? 'Seja o pioneiro e publique a primeira review!'
-                : 'Faça login para publicar a primeira review!'}
+                ? 'Conecte-se ao terminal e transmita o primeiro pacote de dados.'
+                : 'Autenticação necessária para iniciar transmissão de reviews.'}
             </p>
             {user && (
               <button
@@ -590,19 +666,34 @@ export default function FeedClient() {
 
 function OnlineCounter() {
   const [count, setCount] = useState(1)
+  const channelRef = useRef<any>(null)
 
   useEffect(() => {
-    const channel = supabase.channel('online-users', {
-      config: { presence: { key: Math.random().toString(36).slice(2) } }
-    })
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        setCount(Object.keys(channel.presenceState()).length)
+    // Evitar múltiplas conexões em hot-reload
+    if (!channelRef.current) {
+      channelRef.current = supabase.channel('online-users', {
+        config: { presence: { key: Math.random().toString(36).slice(2) } }
       })
-      .subscribe(async status => {
-        if (status === 'SUBSCRIBED') await channel.track({ online_at: new Date().toISOString() })
-      })
-    return () => { supabase.removeChannel(channel) }
+      
+      channelRef.current
+        .on('presence', { event: 'sync' }, () => {
+          const state = channelRef.current.presenceState()
+          setCount(Object.keys(state).length)
+        })
+        .subscribe(async (status: string) => {
+          if (status === 'SUBSCRIBED') {
+            await channelRef.current.track({ online_at: new Date().toISOString() })
+          }
+        })
+    }
+        
+    return () => {
+      // Limpeza robusta ao desmontar
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+    }
   }, [])
 
   return (

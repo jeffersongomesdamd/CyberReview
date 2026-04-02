@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export async function generateMetadata(
-  { params }: { params: { id: string } }
+  { params }: { params: { username: string } }
 ): Promise<Metadata> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,7 +16,7 @@ export async function generateMetadata(
   const { data } = await supabase
     .from('profiles')
     .select('username, bio, avatar_url, xp, level')
-    .eq('id', params.id)
+    .eq('username', params.username)
     .single()
 
   if (!data) return { title: 'Perfil não encontrado' }

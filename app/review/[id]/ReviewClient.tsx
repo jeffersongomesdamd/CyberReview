@@ -30,23 +30,6 @@ function CommentAuthor({
   useEffect(() => {
     // Carga inicial
     fetchEquippedItems(authorId).then(setEq)
-
-    // Listener Realtime
-    const channel = supabase
-      .channel(`comment-author-${authorId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_inventory',
-          filter: `user_id=eq.${authorId}`,
-        },
-        () => fetchEquippedItems(authorId).then(setEq)
-      )
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
   }, [authorId])
 
   const frameStyle = eq?.frame ? {
@@ -130,15 +113,31 @@ export default function ReviewClient() {
 
   const commentInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (id) {
-      loadReview()
-      loadComments()
-      loadCategories()
-    }
-  }, [id, user])
+  const abortControllerRef = useRef<AbortController | null>(null)
 
-  const loadReview = async () => {
+  useEffect(() => {
+    if (!id) return
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
+
+    const timeoutId = setTimeout(() => abortControllerRef.current?.abort(), 15000)
+
+    Promise.all([
+      loadReview(signal),
+      loadComments(signal),
+      loadCategories(signal)
+    ]).finally(() => clearTimeout(timeoutId))
+
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [id, user?.id])
+
+  const loadReview = async (signal?: AbortSignal) => {
 
     if (!id || typeof id !== 'string') {
       setLoading(false)
@@ -146,11 +145,15 @@ export default function ReviewClient() {
     }
 
     setLoading(true)
-    const { data, error } = await supabase
+    
+    let query = supabase
       .from('reviews')
       .select('*, profiles!reviews_author_id_fkey(*), categories(*)')
       .eq('id', id)
-      .maybeSingle()
+      
+    if (signal) query = query.abortSignal(signal as any)
+
+    const { data, error } = await query.maybeSingle()
 
     if (error || !data) {
       setLoading(false)
@@ -160,12 +163,13 @@ export default function ReviewClient() {
     setReview(data)
 
     if (user) {
-      const { data: likeData } = await supabase
+      let likeQuery = supabase
         .from('likes')
         .select('user_id')
         .eq('user_id', user.id)
         .eq('review_id', id)
-        .maybeSingle()
+      if (signal) likeQuery = likeQuery.abortSignal(signal as any)
+      const { data: likeData } = await likeQuery.maybeSingle()
       setIsLiked(!!likeData)
     }
 
@@ -187,38 +191,24 @@ export default function ReviewClient() {
 
   useEffect(() => {
     if (!review?.author_id) return
-
     loadAuthorData(review.author_id)
-
-    // Listener: recarrega quando o autor equipa algo
-    const channel = supabase
-      .channel(`review-author-equipped-${review.author_id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_inventory',
-          filter: `user_id=eq.${review.author_id}`,
-        },
-        () => loadAuthorData(review.author_id)
-      )
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
   }, [review?.author_id])
 
-  const loadComments = async () => {
-    const { data } = await supabase
+  const loadComments = async (signal?: AbortSignal) => {
+    let query = supabase
       .from('comments')
       .select('*, profiles(*)')
       .eq('review_id', id)
       .order('created_at', { ascending: true })
+    if (signal) query = query.abortSignal(signal)
+    const { data } = await query
     if (data) setComments(data)
   }
 
-  const loadCategories = async () => {
-    const { data } = await supabase.from('categories').select('*').order('name')
+  const loadCategories = async (signal?: AbortSignal) => {
+    let query = supabase.from('categories').select('*').order('name')
+    if (signal) query = query.abortSignal(signal)
+    const { data } = await query
     if (data) setCategories(data)
   }
 

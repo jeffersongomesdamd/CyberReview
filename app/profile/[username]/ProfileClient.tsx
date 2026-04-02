@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/components/AuthProvider'
@@ -148,12 +148,12 @@ function getBannerStyle(banner: any): React.CSSProperties {
 }
 
 export default function ProfileClient() {
-  const { id } = useParams<{ id: string }>()
+  const { username } = useParams<{ username: string }>()
   const { user, profile: myProfile, refreshProfile } = useAuth()
   const router = useRouter()
-  const isOwner = user?.id === id
-
+  
   const [profile, setProfile] = useState<Profile | null>(null)
+  const isOwner = user?.id === profile?.id
   const [reviews, setReviews] = useState<Review[]>([])
   const [friends, setFriends] = useState<Profile[]>([])
   const [showAllFriends, setShowAllFriends] = useState(false)
@@ -180,53 +180,69 @@ export default function ProfileClient() {
   const [equipped, setEquipped] = useState<EquippedItems>(EMPTY_EQUIPPED)
   const { equipped: loggedInEquipped } = useEquippedItems(user?.id ?? null)
 
-  const loadEquipped = async () => {
-    const eq = await fetchEquippedItems(id as string)
+  const loadEquipped = async (targetId: string) => {
+    const eq = await fetchEquippedItems(targetId)
     setEquipped(eq)
   }
 
   useEffect(() => {
-    if (!id) return
-    loadEquipped()
+    if (!profile?.id) return
+    loadEquipped(profile.id)
 
-    // Listener Realtime para atualizar equipamentos em tempo real:
-    const channel = supabase
-      .channel(`profile-equipped-${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_inventory',
-          filter: `user_id=eq.${id}`,
-        },
-        () => {
-          loadEquipped()
-        }
-      )
-      .subscribe()
+    // Removed realtime channel to prevent freezing
+  }, [profile?.id])
 
-    return () => { supabase.removeChannel(channel) }
-  }, [id])
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
-    if (id) loadAll()
-  }, [id, user])
+    if (!username) return
+    
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
 
-  const loadAll = async () => {
+    const timeoutId = setTimeout(() => abortControllerRef.current?.abort(), 15000)
+
+    loadAll(signal).finally(() => clearTimeout(timeoutId))
+
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [username, user?.id])
+
+  const loadAll = async (signal?: AbortSignal) => {
     setLoading(true)
-    await Promise.all([
-      loadProfile(),
-      loadReviews(),
-      loadFriendStatus(),
-      loadFriends(),
-      loadCategories(),
-    ])
-    setLoading(false)
+    try {
+      let query = supabase.from('profiles').select('*').eq('username', username)
+      if (signal) query = (query as any).abortSignal(signal)
+      const { data: profileData } = await query.maybeSingle()
+      
+      if (profileData) {
+        setProfile(profileData)
+        setEditUsername(profileData.username)
+        setEditBio(profileData.bio ?? '')
+        
+        await Promise.all([
+          loadReviews(profileData.id, signal),
+          loadFriendStatus(profileData.id, signal),
+          loadFriends(profileData.id, signal),
+          loadCategories(signal),
+        ])
+      }
+    } catch (err: any) {
+      console.error('Error loading profile:', err)
+      toast.error('Erro ao carregar os dados do perfil.', { style: { background: '#111118', color: '#ff2079', border: '1px solid rgba(255,32,121,0.3)' } })
+    } finally {
+      if (signal && !signal.aborted) {
+        setLoading(false)
+      }
+    }
   }
 
   const loadProfile = async () => {
-    const { data } = await supabase.from('profiles').select('*').eq('id', id).single()
+    const { data } = await supabase.from('profiles').select('*').eq('username', username).single()
     if (data) {
       setProfile(data)
       setEditUsername(data.username)
@@ -234,45 +250,60 @@ export default function ProfileClient() {
     }
   }
 
-  const loadReviews = async () => {
-    const { data } = await supabase
+  const loadReviews = async (targetId: string, signal?: AbortSignal) => {
+    let query = supabase
       .from('reviews')
       .select('*, profiles!reviews_author_id_fkey(*), categories(*)')
-      .eq('author_id', id)
+      .eq('author_id', targetId)
       .order('created_at', { ascending: false })
+      
+    if (signal) query = (query as any).abortSignal(signal)
+    
+    const { data } = await query
     if (data) setReviews(data)
   }
 
-  const loadFriends = async () => {
-    const { data } = await supabase
+  const loadFriends = async (targetId: string, signal?: AbortSignal) => {
+    let query = supabase
       .from('friendships')
       .select('requester_id, addressee_id')
       .eq('status', 'accepted')
-      .or(`requester_id.eq.${id},addressee_id.eq.${id}`)
+      .or(`requester_id.eq.${targetId},addressee_id.eq.${targetId}`)
+      
+    if (signal) query = (query as any).abortSignal(signal)
+    
+    const { data } = await query
     if (data) {
-      const friendIds = data.map(f => f.requester_id === id ? f.addressee_id : f.requester_id)
+      const friendIds = data.map(f => f.requester_id === targetId ? f.addressee_id : f.requester_id)
       if (friendIds.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('*').in('id', friendIds)
-        if (profiles) setFriends(profiles)
+        let profileQuery = supabase.from('profiles').select('*').in('id', friendIds)
+        if (signal) profileQuery = (profileQuery as any).abortSignal(signal)
+        const { data: profilesData } = await profileQuery
+        if (profilesData) setFriends(profilesData)
       }
     }
   }
 
-  const loadCategories = async () => {
-    const { data } = await supabase
+  const loadCategories = async (signal?: AbortSignal) => {
+    let query = supabase
       .from('categories')
       .select('*')
       .order('name')
+    if (signal) query = (query as any).abortSignal(signal)
+    const { data } = await query
     if (data) setCategories(data)
   }
 
-  const loadFriendStatus = async () => {
-    if (!user || user.id === id) return
-    const { data } = await supabase
+  const loadFriendStatus = async (targetId: string, signal?: AbortSignal) => {
+    if (!user || user.id === targetId) return
+    let query = supabase
       .from('friendships')
       .select('*')
-      .or(`and(requester_id.eq.${user.id},addressee_id.eq.${id}),and(requester_id.eq.${id},addressee_id.eq.${user.id})`)
-      .single()
+      .or(`and(requester_id.eq.${user.id},addressee_id.eq.${targetId}),and(requester_id.eq.${targetId},addressee_id.eq.${user.id})`)
+      
+    if (signal) query = (query as any).abortSignal(signal)
+    
+    const { data } = await query.maybeSingle()
     if (!data) { setFriendStatus('none'); return }
     setFriendshipId(data.id)
     if (data.status === 'accepted') setFriendStatus('accepted')
@@ -281,10 +312,10 @@ export default function ProfileClient() {
   }
 
   const handleAddFriend = async () => {
-    if (!user) { router.push('/auth'); return }
+    if (!user || !profile) { router.push('/auth'); return }
     const { data, error } = await supabase
       .from('friendships')
-      .insert({ requester_id: user.id, addressee_id: id })
+      .insert({ requester_id: user.id, addressee_id: profile.id })
       .select().single()
     if (error) { toast.error('Erro ao enviar pedido'); return }
     setFriendshipId(data.id)
@@ -361,8 +392,14 @@ export default function ProfileClient() {
         avatar_url: avatarUrl,
       }).eq('id', user.id)
       if (error) throw error
-      await loadProfile()
-      await refreshProfile()
+      
+      const newUsername = editUsername.trim()
+      if (newUsername !== username) {
+        router.push(`/profile/${newUsername}`)
+      } else {
+        await loadProfile()
+        await refreshProfile()
+      }
       setEditMode(false)
       setAvatarFile(null)
       setAvatarPreview(null)
@@ -1130,15 +1167,15 @@ export default function ProfileClient() {
       </div>
 
         {/* Card unificado: Lootboxes / Inventário / Amigos */}
-        {isOwner && (
+        {isOwner && profile?.id && (
           <ProfileInventory
-            userId={id as string}
+            userId={profile.id}
             isOwner={isOwner}
             friends={friends}
             onProfileUpdate={() => {
               loadProfile()
-              loadFriends()
-              loadEquipped()
+              loadFriends(profile.id)
+              loadEquipped(profile.id)
             }}
           />
         )}
@@ -1232,7 +1269,7 @@ export default function ProfileClient() {
           onSuccess={() => {
             setModalOpen(false)
             setCloneSource(null)
-            loadReviews()
+            if (profile?.id) loadReviews(profile.id)
           }}
           categories={categories}
           cloneSource={cloneSource}

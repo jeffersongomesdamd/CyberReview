@@ -44,11 +44,11 @@ export interface Review {
   cloned_from: string | null
   clone_count: number
   like_count: number
+  comment_count: number
   created_at: string
   // Campos de JOIN — o Supabase retorna objeto, não array
   profiles: Profile | null        // era profiles?: Profile
   categories: Category | null     // era categories?: Category
-  comments?: { count: number }[]  // Supabase retorna array com { count } ao usar comments(count)
   is_liked?: boolean
 }
 

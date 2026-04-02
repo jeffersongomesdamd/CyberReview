@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/components/AuthProvider'
 import { getLevelInfo } from '@/lib/constants'
@@ -185,7 +186,7 @@ export default function UserSearch() {
                   onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <a href={`/review/${item.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                  <Link href={`/review/${item.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
                     <div style={{
                       width: 36, height: 36, borderRadius: '8px',
                       background: 'rgba(0,242,255,0.1)',
@@ -195,9 +196,9 @@ export default function UserSearch() {
                     }}>
                       📝
                     </div>
-                  </a>
+                  </Link>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <a href={`/review/${item.id}`} style={{ textDecoration: 'none' }}>
+                    <Link href={`/review/${item.id}`} style={{ textDecoration: 'none' }}>
                       <p style={{
                         fontFamily: 'Orbitron, sans-serif', fontSize: '0.8rem',
                         color: '#00f2ff', margin: 0, letterSpacing: '0.04em',
@@ -205,7 +206,7 @@ export default function UserSearch() {
                       }}>
                         {item.title}
                       </p>
-                    </a>
+                    </Link>
                     <p style={{
                       fontSize: '0.65rem', color: '#666680',
                       fontFamily: 'Inter, sans-serif',
@@ -237,7 +238,7 @@ export default function UserSearch() {
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 {/* Avatar */}
-                <a href={`/profile/${u.id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                <Link href={`/profile/${u.username}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: '50%',
                     background: 'linear-gradient(135deg, #00f2ff, #bc13fe)',
@@ -250,11 +251,11 @@ export default function UserSearch() {
                       : u.username[0]?.toUpperCase()
                     }
                   </div>
-                </a>
+                </Link>
 
                 {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <a href={`/profile/${u.id}`} style={{ textDecoration: 'none' }}>
+                  <Link href={`/profile/${u.username}`} style={{ textDecoration: 'none' }}>
                     <p style={{
                       fontFamily: 'Orbitron, sans-serif', fontSize: '0.8rem',
                       color: '#e0e0e0', margin: 0, letterSpacing: '0.04em',
@@ -262,7 +263,7 @@ export default function UserSearch() {
                     }}>
                       @{u.username}
                     </p>
-                  </a>
+                  </Link>
                   <p style={{
                     fontSize: '0.65rem', color: levelInfo.color,
                     fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.06em',

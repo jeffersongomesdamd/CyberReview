@@ -19,6 +19,7 @@ export default function AuthClient() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [signupSuccess, setSignupSuccess] = useState(false)
 
   const [form, setForm] = useState({
     email: '',
@@ -66,8 +67,11 @@ export default function AuthClient() {
         router.push('/')
       } else {
         await signUp(form.email, form.password, form.username)
-        toast.success('Conta criada! Verifique seu e-mail.', { style: { background: '#111118', color: '#00ff9d', border: '1px solid rgba(0,255,157,0.3)' } })
-        router.push('/')
+        setSignupSuccess(true)
+        toast.success('Conta criada! Verifique seu e-mail.', { 
+          style: { background: '#111118', color: '#00ff9d', border: '1px solid rgba(0,255,157,0.3)' },
+          duration: 6000
+        })
       }
     } catch (err: any) {
       const msg: string = err?.message ?? ''
@@ -139,282 +143,327 @@ export default function AuthClient() {
       {/* Card */}
       <div style={{
         width: '100%',
-        maxWidth: 440,
-        background: 'rgba(13,13,24,0.95)',
-        border: '1px solid rgba(0,242,255,0.15)',
-        borderRadius: 20,
+        maxWidth: 420,
         padding: '2.5rem',
-        backdropFilter: 'blur(20px)',
-        boxShadow: '0 0 60px rgba(0,242,255,0.08), 0 0 120px rgba(188,19,254,0.05), 0 24px 64px rgba(0,0,0,0.8)',
+        background: '#0d0d18',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 24,
+        boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
         position: 'relative',
         zIndex: 10,
-        animation: 'cardAppear 0.4s ease forwards',
+        margin: '2rem',
       }}>
-
-        {/* Top accent line */}
-        <div style={{
-          position: 'absolute', top: 0, left: '10%', right: '10%', height: 2,
-          background: 'linear-gradient(90deg, transparent, #00f2ff, #bc13fe, transparent)',
-          borderRadius: 2,
-        }} />
-
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 56,
-            height: 56,
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, rgba(0,242,255,0.15), rgba(188,19,254,0.15))',
-            border: '1px solid rgba(0,242,255,0.3)',
-            marginBottom: '1rem',
-            boxShadow: '0 0 24px rgba(0,242,255,0.2)',
-          }}>
-            <Zap size={26} fill="#bc13fe" color="#bc13fe" />
-          </div>
-          <h1 style={{
-            fontFamily: 'Orbitron, sans-serif',
-            fontSize: '1.75rem',
-            fontWeight: 900,
-            background: 'linear-gradient(135deg, #00f2ff, #bc13fe)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            letterSpacing: '0.05em',
-            marginBottom: '0.375rem',
-          }}>
-            CYBERLOGIN
-          </h1>
-          <p style={{ color: '#666680', fontSize: '0.8rem' }}>
-            Acesse a rede neural do CyberReview
-          </p>
-        </div>
-
-        {/* Tabs */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          background: 'rgba(255,255,255,0.03)',
-          borderRadius: 10,
-          padding: 4,
-          marginBottom: '2rem',
-          border: '1px solid rgba(255,255,255,0.06)',
-        }}>
-          {(['signin', 'signup'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => { setTab(t); setError('') }}
-              style={{
-                padding: '0.6rem',
-                borderRadius: 7,
-                border: 'none',
-                background: tab === t
-                  ? 'linear-gradient(135deg, rgba(0,242,255,0.2), rgba(188,19,254,0.2))'
-                  : 'transparent',
-                color: tab === t ? '#e0e0e0' : '#666680',
-                fontFamily: 'Orbitron, sans-serif',
-                fontSize: '0.7rem',
-                letterSpacing: '0.1em',
-                cursor: 'pointer',
-                transition: 'all 0.25s ease',
-                boxShadow: tab === t ? '0 0 12px rgba(0,242,255,0.15)' : 'none',
-                borderColor: tab === t ? 'rgba(0,242,255,0.2)' : 'transparent',
-                borderStyle: 'solid',
-                borderWidth: 1,
-              }}
-            >
-              {t === 'signin' ? 'ENTRAR' : 'CADASTRAR'}
-            </button>
-          ))}
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-
-          {/* Username (signup only) */}
-          {tab === 'signup' && (
-            <div style={{ animation: 'slideDown 0.3s ease forwards' }}>
-              <label style={{ fontSize: '0.72rem', color: '#666680', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em', display: 'block', marginBottom: '0.4rem' }}>
-                USERNAME
-              </label>
-              <InputField
-                icon={<User size={15} color="#666680" />}
-                type="text"
-                placeholder="seu_username"
-                value={form.username}
-                onChange={update('username')}
-                required
-              />
-            </div>
-          )}
-
-          {/* Email */}
-          <div>
-            <label style={{ fontSize: '0.72rem', color: '#666680', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em', display: 'block', marginBottom: '0.4rem' }}>
-              E-MAIL
-            </label>
-            <InputField
-              icon={<Mail size={15} color="#666680" />}
-              type="email"
-              placeholder="name@matrix.com"
-              value={form.email}
-              onChange={update('email')}
-              required
-            />
-          </div>
-
-          {/* Password */}
-          <div>
-            <label style={{ fontSize: '0.72rem', color: '#666680', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em', display: 'block', marginBottom: '0.4rem' }}>
-              SENHA
-            </label>
-            <InputField
-              icon={<Lock size={15} color="#666680" />}
-              type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
-              value={form.password}
-              onChange={update('password')}
-              required
-              rightElement={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#444466', padding: 0, display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#00f2ff')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#444466')}
-                >
-                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
-              }
-            />
-          </div>
-
-          {/* Confirm Password (signup only) */}
-          {tab === 'signup' && (
-            <div style={{ animation: 'slideDown 0.3s ease forwards' }}>
-              <label style={{ fontSize: '0.72rem', color: '#666680', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em', display: 'block', marginBottom: '0.4rem' }}>
-                CONFIRMAR SENHA
-              </label>
-              <InputField
-                icon={<Lock size={15} color="#666680" />}
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={form.confirmPassword}
-                onChange={update('confirmPassword')}
-                required
-              />
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
+        {signupSuccess ? (
+          <div style={{ textAlign: 'center', animation: 'fadeIn 0.5s ease' }}>
             <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.625rem 0.875rem',
-              background: 'rgba(255,32,121,0.08)',
-              border: '1px solid rgba(255,32,121,0.3)',
-              borderRadius: 8,
-              color: '#ff2079',
-              fontSize: '0.78rem',
-              animation: 'slideDown 0.2s ease',
+              width: 64, height: 64, borderRadius: '50%',
+              background: 'rgba(0,255,157,0.1)',
+              border: '1px solid rgba(0,255,157,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 1.5rem',
+              color: '#00ff9d',
             }}>
-              <AlertCircle size={14} />
-              {error}
+              <Mail size={32} />
             </div>
-          )}
+            <h2 style={{ fontFamily: 'Orbitron, sans-serif', color: '#fff', fontSize: '1.25rem', marginBottom: '1rem' }}>
+              CONTA CRIADA!
+            </h2>
+            <p style={{ color: '#8888aa', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '2rem' }}>
+              Enviamos um link de confirmação para <strong style={{ color: '#00f2ff' }}>{form.email}</strong>.<br/><br/>
+              Por favor, verifique sua caixa de entrada (e a pasta de spam) e clique no link para ativar seu perfil.
+            </p>
+            <button
+              onClick={() => {
+                setSignupSuccess(false)
+                setTab('signin')
+              }}
+              style={{
+                width: '100%',
+                padding: '0.875rem',
+                background: 'linear-gradient(135deg, #00f2ff, #bc13fe)',
+                border: 'none',
+                borderRadius: 12,
+                color: '#050505',
+                fontFamily: 'Orbitron, sans-serif',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'transform 0.2s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              VOLTAR PARA LOGIN
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Top accent line */}
+            <div style={{
+              position: 'absolute', top: 0, left: '10%', right: '10%', height: 2,
+              background: 'linear-gradient(90deg, transparent, #00f2ff, #bc13fe, transparent)',
+              borderRadius: 2,
+            }} />
 
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              marginTop: '0.5rem',
-              padding: '0.8rem',
-              background: loading
-                ? 'rgba(255,255,255,0.05)'
-                : 'linear-gradient(135deg, #00f2ff, #bc13fe)',
-              border: 'none',
+            {/* Logo */}
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, rgba(0,242,255,0.15), rgba(188,19,254,0.15))',
+                border: '1px solid rgba(0,242,255,0.3)',
+                marginBottom: '1rem',
+                boxShadow: '0 0 24px rgba(0,242,255,0.2)',
+              }}>
+                <Zap size={26} fill="#bc13fe" color="#bc13fe" />
+              </div>
+              <h1 style={{
+                fontFamily: 'Orbitron, sans-serif',
+                fontSize: '1.75rem',
+                fontWeight: 900,
+                background: 'linear-gradient(135deg, #00f2ff, #bc13fe)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                letterSpacing: '0.05em',
+                marginBottom: '0.375rem',
+              }}>
+                CYBERLOGIN
+              </h1>
+              <p style={{ color: '#666680', fontSize: '0.8rem' }}>
+                Acesse a rede neural do CyberReview
+              </p>
+            </div>
+
+            {/* Tabs */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              background: 'rgba(255,255,255,0.03)',
               borderRadius: 10,
-              color: loading ? '#666680' : '#050505',
-              fontFamily: 'Orbitron, sans-serif',
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.3s ease',
-              boxShadow: loading ? 'none' : '0 0 24px rgba(0,242,255,0.3), 0 0 48px rgba(188,19,254,0.15)',
-              transform: 'translateY(0)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-            onMouseEnter={e => {
-              if (!loading) {
-                const el = e.currentTarget
-                el.style.transform = 'translateY(-2px)'
-                el.style.boxShadow = '0 0 32px rgba(0,242,255,0.5), 0 0 64px rgba(188,19,254,0.25)'
-              }
-            }}
-            onMouseLeave={e => {
-              const el = e.currentTarget
-              el.style.transform = 'translateY(0)'
-              el.style.boxShadow = loading ? 'none' : '0 0 24px rgba(0,242,255,0.3)'
-            }}
-          >
-            {loading ? (
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                <span style={{
-                  width: 14, height: 14,
-                  border: '2px solid rgba(255,255,255,0.2)',
-                  borderTopColor: '#00f2ff',
-                  borderRadius: '50%',
-                  display: 'inline-block',
-                  animation: 'spin 0.7s linear infinite',
-                }} />
-                PROCESSANDO...
-              </span>
-            ) : tab === 'signin' ? 'ENTRAR NA REDE' : 'CRIAR CONTA'}
-          </button>
-        </form>
+              padding: 4,
+              marginBottom: '2rem',
+              border: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              {(['signin', 'signup'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => { setTab(t); setError('') }}
+                  style={{
+                    padding: '0.6rem',
+                    borderRadius: 7,
+                    border: 'none',
+                    background: tab === t
+                      ? 'linear-gradient(135deg, rgba(0,242,255,0.2), rgba(188,19,254,0.2))'
+                      : 'transparent',
+                    color: tab === t ? '#e0e0e0' : '#666680',
+                    fontFamily: 'Orbitron, sans-serif',
+                    fontSize: '0.7rem',
+                    letterSpacing: '0.1em',
+                    cursor: 'pointer',
+                    transition: 'all 0.25s ease',
+                    boxShadow: tab === t ? '0 0 12px rgba(0,242,255,0.15)' : 'none',
+                    borderColor: tab === t ? 'rgba(0,242,255,0.2)' : 'transparent',
+                    borderStyle: 'solid',
+                    borderWidth: 1,
+                  }}
+                >
+                  {t === 'signin' ? 'ENTRAR' : 'CADASTRAR'}
+                </button>
+              ))}
+            </div>
 
-        {/* Footer */}
-        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.78rem', color: '#444466' }}>
-          {tab === 'signin' ? 'Novo por aqui? ' : 'Já tem conta? '}
-          <button
-            onClick={() => { setTab(tab === 'signin' ? 'signup' : 'signin'); setError('') }}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: '#00f2ff', fontSize: '0.78rem',
-              fontFamily: 'Inter, sans-serif',
-              textDecoration: 'underline',
-              textDecorationColor: 'rgba(0,242,255,0.3)',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.textShadow = '0 0 8px rgba(0,242,255,0.6)')}
-            onMouseLeave={e => (e.currentTarget.style.textShadow = 'none')}
-          >
-            {tab === 'signin' ? 'Crie uma conta' : 'Faça login'}
-          </button>
-        </p>
+            {/* Form */}
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
-        {/* Back to feed */}
-        <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-          <Link href="/" style={{
-            color: '#333350',
-            fontSize: '0.72rem',
-            fontFamily: 'Orbitron, sans-serif',
-            letterSpacing: '0.06em',
-            textDecoration: 'none',
-            transition: 'color 0.2s',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#666680')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#333350')}
-          >
-            ← VOLTAR PARA O FEED
-          </Link>
-        </div>
+              {/* Username (signup only) */}
+              {tab === 'signup' && (
+                <div style={{ animation: 'slideDown 0.3s ease forwards' }}>
+                  <label style={{ fontSize: '0.72rem', color: '#666680', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em', display: 'block', marginBottom: '0.4rem' }}>
+                    USERNAME
+                  </label>
+                  <InputField
+                    icon={<User size={15} color="#666680" />}
+                    type="text"
+                    placeholder="seu_username"
+                    value={form.username}
+                    onChange={update('username')}
+                    required
+                  />
+                </div>
+              )}
+
+              {/* Email */}
+              <div>
+                <label style={{ fontSize: '0.72rem', color: '#666680', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em', display: 'block', marginBottom: '0.4rem' }}>
+                  E-MAIL
+                </label>
+                <InputField
+                  icon={<Mail size={15} color="#666680" />}
+                  type="email"
+                  placeholder="name@matrix.com"
+                  value={form.email}
+                  onChange={update('email')}
+                  required
+                />
+              </div>
+
+              {/* Password */}
+              <div>
+                <label style={{ fontSize: '0.72rem', color: '#666680', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em', display: 'block', marginBottom: '0.4rem' }}>
+                  SENHA
+                </label>
+                <InputField
+                  icon={<Lock size={15} color="#666680" />}
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={update('password')}
+                  required
+                  rightElement={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#444466', padding: 0, display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#00f2ff')}
+                      onMouseLeave={e => (e.currentTarget.style.color = '#444466')}
+                    >
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  }
+                />
+              </div>
+
+              {/* Confirm Password (signup only) */}
+              {tab === 'signup' && (
+                <div style={{ animation: 'slideDown 0.3s ease forwards' }}>
+                  <label style={{ fontSize: '0.72rem', color: '#666680', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em', display: 'block', marginBottom: '0.4rem' }}>
+                    CONFIRMAR SENHA
+                  </label>
+                  <InputField
+                    icon={<Lock size={15} color="#666680" />}
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={form.confirmPassword}
+                    onChange={update('confirmPassword')}
+                    required
+                  />
+                </div>
+              )}
+
+              {/* Error */}
+              {error && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.625rem 0.875rem',
+                  background: 'rgba(255,32,121,0.08)',
+                  border: '1px solid rgba(255,32,121,0.3)',
+                  borderRadius: 8,
+                  color: '#ff2079',
+                  fontSize: '0.78rem',
+                  animation: 'slideDown 0.2s ease',
+                }}>
+                  <AlertCircle size={14} />
+                  {error}
+                </div>
+              )}
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  marginTop: '0.5rem',
+                  padding: '0.8rem',
+                  background: loading
+                    ? 'rgba(255,255,255,0.05)'
+                    : 'linear-gradient(135deg, #00f2ff, #bc13fe)',
+                  border: 'none',
+                  borderRadius: 10,
+                  color: loading ? '#666680' : '#050505',
+                  fontFamily: 'Orbitron, sans-serif',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: loading ? 'none' : '0 0 24px rgba(0,242,255,0.3), 0 0 48px rgba(188,19,254,0.15)',
+                  transform: 'translateY(0)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+                onMouseEnter={e => {
+                  if (!loading) {
+                    const el = e.currentTarget
+                    el.style.transform = 'translateY(-2px)'
+                    el.style.boxShadow = '0 0 32px rgba(0,242,255,0.5), 0 0 64px rgba(188,19,254,0.25)'
+                  }
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget
+                  el.style.transform = 'translateY(0)'
+                  el.style.boxShadow = loading ? 'none' : '0 0 24px rgba(0,242,255,0.3)'
+                }}
+              >
+                {loading ? (
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                    <span style={{
+                      width: 14, height: 14,
+                      border: '2px solid rgba(255,255,255,0.2)',
+                      borderTopColor: '#00f2ff',
+                      borderRadius: '50%',
+                      display: 'inline-block',
+                      animation: 'spin 0.7s linear infinite',
+                    }} />
+                    PROCESSANDO...
+                  </span>
+                ) : tab === 'signin' ? 'ENTRAR NA REDE' : 'CRIAR CONTA'}
+              </button>
+            </form>
+
+            {/* Footer */}
+            <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.78rem', color: '#444466' }}>
+              {tab === 'signin' ? 'Novo por aqui? ' : 'Já tem conta? '}
+              <button
+                onClick={() => { setTab(tab === 'signin' ? 'signup' : 'signin'); setError('') }}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: '#00f2ff', fontSize: '0.78rem',
+                  fontFamily: 'Inter, sans-serif',
+                  textDecoration: 'underline',
+                  textDecorationColor: 'rgba(0,242,255,0.3)',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.textShadow = '0 0 8px rgba(0,242,255,0.6)')}
+                onMouseLeave={e => (e.currentTarget.style.textShadow = 'none')}
+              >
+                {tab === 'signin' ? 'Crie uma conta' : 'Faça login'}
+              </button>
+            </p>
+
+            {/* Back to feed */}
+            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+              <Link href="/" style={{
+                color: '#333350',
+                fontSize: '0.72rem',
+                fontFamily: 'Orbitron, sans-serif',
+                letterSpacing: '0.06em',
+                textDecoration: 'none',
+                transition: 'color 0.2s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#666680')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#333350')}
+              >
+                ← VOLTAR PARA O FEED
+              </Link>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Keyframes injected */}

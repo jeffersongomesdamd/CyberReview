@@ -50,12 +50,33 @@
 
 ---
 
+## ⚡ Performance & Arquitetura
+
+O **CyberReview** foi construído focando em uma experiência fluida ("Snappy UX"), utilizando técnicas avançadas de gerenciamento de estado e rede:
+
+- **Abas Ininterruptas (AbortController):** Todas as requisições ao Supabase são vinculadas a um `AbortController`. Ao navegar rapidamente entre o Feed e o Perfil, as requisições da aba anterior são canceladas instantaneamente, evitando desperdício de banda e o efeito de "carregamento infinito".
+- **Sincronização Realtime de Contadores:** Os cards do Feed possuem listeners Realtime. Curtidas e comentários refletem nos cards de todos os usuários logados sem necessidade de Refresh.
+- **Race Condition Protection:** Lógica implementada para garantir que, em conexões lentas, apenas a última requisição solicitada pelo usuário atualize a interface.
+
+---
+
+## ☁️ Deploy via Vercel
+
+A plataforma está otimizada para ser hospedada no **Vercel** de forma gratuita e escalável.
+
+### Passos para Deploy:
+
+1. Suba seu código para um repositório no **GitHub**.
+2. No painel do Vercel, clique em **"Add New"** > **"Project"**.
+3. Importe o repositório do CyberReview.
+4. Em **Environment Variables**, adicione:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+5. Clique em **Deploy**.
+
+---
+
 ## ⚙️ Rodando Localmente
-
-### Pré-requisitos
-
-- Node.js 18+
-- Uma conta no [Supabase](https://supabase.com/)
 
 ### Instalação
 
@@ -75,47 +96,29 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-Acesse [http://localhost:3000](http://localhost:3000)
-
----
-
-## 🔑 Variáveis de Ambiente
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=sua_url_do_supabase
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_anon_key
-```
-
 ---
 
 ## 📁 Estrutura do Projeto
 
 ```
 CyberReview/
-├── app/                  # App Router (Next.js)
-│   ├── FeedClient.tsx    # Feed principal
-│   ├── profile/[id]/     # Perfil de usuário
-│   └── review/[id]/      # Página da review
-├── components/           # Componentes reutilizáveis
-│   ├── Navbar.tsx
-│   ├── ReviewCard.tsx
-│   ├── ReviewModal.tsx
-│   ├── ProfileInventory.tsx
-│   ├── LootboxOpener.tsx
-│   └── ...
-├── lib/                  # Utilitários e hooks
-│   ├── supabaseClient.ts
-│   ├── constants.ts
-│   ├── themeUtils.ts
-│   └── hooks/
-└── public/               # Assets estáticos
+├── app/                    # App Router (Next.js)
+│   ├── profile/[username]/ # Perfil dinâmico por Nickname
+│   └── review/[id]/        # Visualização detalhada
+├── components/             # Componentes modulares
+│   ├── FeedClient.tsx      # Core logic do Feed (Realtime + Filters)
+│   └── ReviewCard.tsx      # Renderização otimizada de cards
+├── supabase/
+│   └── migrations/         # Scripts de banco (Triggers, RLS, Counters)
+├── lib/                    # Hooks e Utilitários
+└── public/                 # Branding e Assets
 ```
 
 ---
 
 ## 📜 Licença
 
-Este projeto é de uso pessoal. Todos os direitos reservados.
+Este projeto é de uso pessoal e portfólio. Todos os direitos reservados.
 
 ---
 

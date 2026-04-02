@@ -37,24 +37,7 @@ export default function ReviewCard({
 
   useEffect(() => {
     if (!review.author_id) return
-
     fetchEquippedItems(review.author_id).then(setAuthorEquipped)
-
-    const channel = supabase
-      .channel(`card-equipped-${review.id}-${review.author_id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_inventory',
-          filter: `user_id=eq.${review.author_id}`,
-        },
-        () => fetchEquippedItems(review.author_id).then(setAuthorEquipped)
-      )
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
   }, [review.author_id])
 
   const reviewId = review?.id
@@ -69,9 +52,7 @@ export default function ReviewCard({
   const attributes = Array.isArray(review.attributes) ? review.attributes : []
   const likeCount = review.like_count ?? 0
   const cloneCount = review.clone_count ?? 0
-  const commentCount = Array.isArray(review.comments)
-    ? ((review.comments[0] as any)?.count ?? 0)
-    : 0
+  const commentCount = review.comment_count ?? 0
 
   // profiles pode ser objeto ou null — Supabase JOIN retorna objeto direto
   const authorUsername = (review.profiles as any)?.username ?? 'anônimo'
@@ -341,7 +322,7 @@ export default function ReviewCard({
         {/* Autor + data */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Link
-            href={`/profile/${authorId}`}
+            href={`/profile/${authorUsername}`}
             style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', textDecoration: 'none' }}
           >
             <div style={{ position: 'relative', flexShrink: 0, width: 22, height: 22 }}>

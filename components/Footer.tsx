@@ -389,7 +389,7 @@ export default function Footer() {
               boxShadow: '0 0 30px rgba(255,32,121,0.2)',
             }}>
               <img
-                src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://nubank.com.br/cobrar/qekhh/69bedd82-525d-4838-aa9d-84bcdbbac0cb"
+                src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fnubank.com.br%2Fcobrar%2Fqekhh%2F69bedd82-525d-4838-aa9d-84bcdbbac0cb"
                 alt="QR Code PIX"
                 width={200}
                 height={200}
