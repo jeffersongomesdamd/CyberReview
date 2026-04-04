@@ -194,16 +194,25 @@ export default function FeedClient() {
       }
 
 
-      // Busca likes do usuário atual
+      // Busca likes do usuário atual + comment counts reais em paralelo
       let likedSet = new Set<string>()
-      if (opts.userId && data && data.length > 0) {
-        const reviewIds = data.map(r => r.id)
-        const { data: likeData } = await supabase
-          .from('likes')
-          .select('review_id')
-          .eq('user_id', opts.userId)
-          .in('review_id', reviewIds)
-        likeData?.forEach(l => likedSet.add(l.review_id))
+      const commentCountMap = new Map<string, number>()
+
+      if (data && data.length > 0) {
+        const reviewIds = data.map((r: any) => r.id)
+
+        // Fetch em paralelo para não bloquear
+        const [likeResult, commentResult] = await Promise.all([
+          opts.userId
+            ? supabase.from('likes').select('review_id').eq('user_id', opts.userId).in('review_id', reviewIds)
+            : Promise.resolve({ data: [] }),
+          supabase.from('comments').select('review_id').in('review_id', reviewIds),
+        ])
+
+        ;(likeResult.data as any[])?.forEach((l: any) => likedSet.add(l.review_id))
+        ;(commentResult.data as any[])?.forEach((c: any) => {
+          commentCountMap.set(c.review_id, (commentCountMap.get(c.review_id) ?? 0) + 1)
+        })
       }
 
       const enriched = ((data as any) ?? []).map((r: any) => ({
@@ -211,6 +220,8 @@ export default function FeedClient() {
         profiles: Array.isArray(r.profiles) ? r.profiles[0] : r.profiles,
         categories: Array.isArray(r.categories) ? r.categories[0] : r.categories,
         is_liked: likedSet.has(r.id),
+        // Usa o count real da tabela comments; fallback para o campo cacheado
+        comment_count: commentCountMap.get(r.id) ?? r.comment_count ?? 0,
       })) as Review[]
 
       if (opts.reset) {

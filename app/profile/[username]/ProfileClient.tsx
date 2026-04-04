@@ -260,7 +260,32 @@ export default function ProfileClient() {
     if (signal) query = (query as any).abortSignal(signal)
     
     const { data } = await query
-    if (data) setReviews(data)
+    if (!data) return
+
+    // Busca comment counts reais para garantir que os cards mostrem corretamente
+    const reviewIds = data.map((r: any) => r.id)
+    const commentCountMap = new Map<string, number>()
+
+    if (reviewIds.length > 0) {
+      const commentQuery = supabase
+        .from('comments')
+        .select('review_id')
+        .in('review_id', reviewIds)
+      const { data: commentData } = signal
+        ? await (commentQuery as any).abortSignal(signal)
+        : await commentQuery
+
+      ;(commentData as any[])?.forEach((c: any) => {
+        commentCountMap.set(c.review_id, (commentCountMap.get(c.review_id) ?? 0) + 1)
+      })
+    }
+
+    const enriched = data.map((r: any) => ({
+      ...r,
+      comment_count: commentCountMap.get(r.id) ?? r.comment_count ?? 0,
+    }))
+
+    setReviews(enriched)
   }
 
   const loadFriends = async (targetId: string, signal?: AbortSignal) => {
